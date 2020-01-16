@@ -9,7 +9,6 @@ code
 templib
 SConstruct
 .*dblite
-pom.xml
 .project
 .classpath
 .settings
@@ -18,3 +17,4 @@ pom.xml
 *.ipr
 *.iws
 *-gc.log
+/target/
