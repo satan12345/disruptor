@@ -145,6 +145,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
         //保存生产者当前的seq
         this.nextValue = nextSequence;
 
+
         return nextSequence;
     }
 
