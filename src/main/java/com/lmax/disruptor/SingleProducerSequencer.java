@@ -126,12 +126,12 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
         long nextSequence = nextValue + n;
         //wrapPoint用于判断当前的序号有没有绕过整个ringBuffer容器  warpPoint 看起来是减去一圈的值
         long wrapPoint = nextSequence - bufferSize;
-        //暂时不清楚 可能是用来缓存优化的 初始值为-1
+        //这个 cachedGatingSequence 的目的就是不要每次都去进行获取消费者的最小序号 用一个缓存去保存
         long cachedGatingSequence = this.cachedValue;
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > nextValue) {
             cursor.setVolatile(nextValue);  // StoreLoad fence
-            //最小的序号
+            //消费者最小的消费进度
             long minSequence;
             //自旋操作 如果生产者的序号（减去ringBuffer的长度 即已经填充完一圈 再进行下一圈的填充的时候）如果大于消费者的最小序号 则线程自旋等待
             // Util.getMinimumSequence(gatingSequences, nextValue) 含义就是找到消费者中最小的序号值
@@ -139,7 +139,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
             {   //线程暂停
                 LockSupport.parkNanos(1L); // TODO: Use waitStrategy to spin?
             }
-            //保存最小的消费者序号
+            //缓存保存最小的消费者序号
             this.cachedValue = minSequence;
         }
         //保存生产者当前的seq
