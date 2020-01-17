@@ -29,9 +29,17 @@ public abstract class AbstractSequencer implements Sequencer
 {
     private static final AtomicReferenceFieldUpdater<AbstractSequencer, Sequence[]> SEQUENCE_UPDATER =
         AtomicReferenceFieldUpdater.newUpdater(AbstractSequencer.class, Sequence[].class, "gatingSequences");
-
+    /**
+     * ringBuffer的大小
+     */
     protected final int bufferSize;
+    /**
+     * 等待策略
+     */
     protected final WaitStrategy waitStrategy;
+    /**
+     * sequence
+     */
     protected final Sequence cursor = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
     protected volatile Sequence[] gatingSequences = new Sequence[0];
 

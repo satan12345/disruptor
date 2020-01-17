@@ -67,9 +67,9 @@ abstract class RingBufferFields<E> extends RingBufferPad
     private final long indexMask;
     //ringBuffer的数组容器
     private final Object[] entries;
-    //
+    //ringBuffer的大小
     protected final int bufferSize;
-    // 生产者序列号
+    // 生产者序列
     protected final Sequencer sequencer;
 
     RingBufferFields(EventFactory<E> eventFactory, Sequencer sequencer){
@@ -181,6 +181,7 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
      */
     public static <E> RingBuffer<E> createSingleProducer(EventFactory<E> factory,
         int bufferSize,WaitStrategy waitStrategy) {
+        //创建单生成的的Sequencer
         SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy);
 
         return new RingBuffer<E>(factory, sequencer);
@@ -212,13 +213,18 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
      * @return a constructed ring buffer.
      * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
      */
-    public static <E> RingBuffer<E> create(ProducerType producerType,EventFactory<E> factory,
-        int bufferSize, WaitStrategy waitStrategy) {
+    public static <E> RingBuffer<E> create(ProducerType producerType,
+                                           EventFactory<E> factory,
+                                           int bufferSize,
+                                           WaitStrategy waitStrategy) {
+        //根据生产者类型调用不通的方法创建单生产者或者多生产者
         switch (producerType)
         {
             case SINGLE:
+                //创建单生产者
                 return createSingleProducer(factory, bufferSize, waitStrategy);
             case MULTI:
+                //创建多生产者
                 return createMultiProducer(factory, bufferSize, waitStrategy);
             default:
                 throw new IllegalStateException(producerType.toString());
