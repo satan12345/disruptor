@@ -16,12 +16,10 @@
 package com.lmax.disruptor;
 
 
-import lombok.extern.slf4j.Slf4j;
-import sun.misc.Unsafe;
-
 import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.Util;
-@Slf4j
+import sun.misc.Unsafe;
+
 abstract class RingBufferPad
 {
     /*
@@ -45,6 +43,7 @@ abstract class RingBufferFields<E> extends RingBufferPad
     {
         // arrayIndexScale获取数组中一个元素占用的字节数，不同JVM实现可能有不同的大小
         final int scale = UNSAFE.arrayIndexScale(Object[].class);
+
         System.out.println("scale = " + scale);
         if (4 == scale)
         {
