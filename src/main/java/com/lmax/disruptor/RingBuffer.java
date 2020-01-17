@@ -16,26 +16,36 @@
 package com.lmax.disruptor;
 
 
+import lombok.extern.slf4j.Slf4j;
 import sun.misc.Unsafe;
 
 import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.Util;
-
+@Slf4j
 abstract class RingBufferPad
 {
+    /*
+    RingBufferFields中的属性被频繁读取，这里的属性是为了避免RingBufferFields遇到伪共享问题
+     */
     protected long p1, p2, p3, p4, p5, p6, p7;
 }
 
 abstract class RingBufferFields<E> extends RingBufferPad
 {
+    // 用于在数组中进行缓存行填充的空元素个数
     private static final int BUFFER_PAD;
+    // 内存中引用数组的开始元素基地址，是数组开始的地址+BUFFER_PAD个元素的偏移量之和，后续元素的内存地址需要在此基础计算地址
     private static final long REF_ARRAY_BASE;
+    // 引用元素的位移量，用于计算BUFFER_PAD偏移量，基于位移计算比乘法运算更高效
     private static final int REF_ELEMENT_SHIFT;
+    // 上面的变量都是为了UNSAFE的操作
     private static final Unsafe UNSAFE = Util.getUnsafe();
 
     static
     {
+        // arrayIndexScale获取数组中一个元素占用的字节数，不同JVM实现可能有不同的大小
         final int scale = UNSAFE.arrayIndexScale(Object[].class);
+        System.out.println("scale = " + scale);
         if (4 == scale)
         {
             REF_ELEMENT_SHIFT = 2;
@@ -48,20 +58,22 @@ abstract class RingBufferFields<E> extends RingBufferPad
         {
             throw new IllegalStateException("Unknown pointer size");
         }
+        // BUFFER_PAD=32 or 16，为什么是128呢？是为了满足处理器的缓存行预取功能(Adjacent Cache-Line Prefetch)
         BUFFER_PAD = 128 / scale;
         // Including the buffer pad in the array base offset
+        //arrayBaseOffset方法是一个本地方法，可以获取数组第一个元素的偏移地址
         REF_ARRAY_BASE = UNSAFE.arrayBaseOffset(Object[].class) + 128;
     }
-
+    // 用于进行 & 位与操作，实现高效的模操作
     private final long indexMask;
+    //ringBuffer的数组容器
     private final Object[] entries;
+    //
     protected final int bufferSize;
+    // 生产者序列号
     protected final Sequencer sequencer;
 
-    RingBufferFields(
-        EventFactory<E> eventFactory,
-        Sequencer sequencer)
-    {
+    RingBufferFields(EventFactory<E> eventFactory, Sequencer sequencer){
         this.sequencer = sequencer;
         this.bufferSize = sequencer.getBufferSize();
 
@@ -75,10 +87,15 @@ abstract class RingBufferFields<E> extends RingBufferPad
         }
 
         this.indexMask = bufferSize - 1;
+
         this.entries = new Object[sequencer.getBufferSize() + 2 * BUFFER_PAD];
         fill(eventFactory);
     }
 
+    /**
+     * 内存预加载
+     * @param eventFactory
+     */
     private void fill(EventFactory<E> eventFactory)
     {
         for (int i = 0; i < bufferSize; i++)
@@ -112,10 +129,7 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
      * @param sequencer    sequencer to handle the ordering of events moving through the RingBuffer.
      * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
      */
-    RingBuffer(
-        EventFactory<E> eventFactory,
-        Sequencer sequencer)
-    {
+    RingBuffer(EventFactory<E> eventFactory,Sequencer sequencer){
         super(eventFactory, sequencer);
     }
 
@@ -166,11 +180,8 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
      * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
      * @see SingleProducerSequencer
      */
-    public static <E> RingBuffer<E> createSingleProducer(
-        EventFactory<E> factory,
-        int bufferSize,
-        WaitStrategy waitStrategy)
-    {
+    public static <E> RingBuffer<E> createSingleProducer(EventFactory<E> factory,
+        int bufferSize,WaitStrategy waitStrategy) {
         SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy);
 
         return new RingBuffer<E>(factory, sequencer);
@@ -202,12 +213,8 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
      * @return a constructed ring buffer.
      * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
      */
-    public static <E> RingBuffer<E> create(
-        ProducerType producerType,
-        EventFactory<E> factory,
-        int bufferSize,
-        WaitStrategy waitStrategy)
-    {
+    public static <E> RingBuffer<E> create(ProducerType producerType,EventFactory<E> factory,
+        int bufferSize, WaitStrategy waitStrategy) {
         switch (producerType)
         {
             case SINGLE:
